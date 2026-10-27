@@ -1,9 +1,11 @@
-package e2e_test
+package tests_test
 
 import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestWaitConcurrentSpacing(t *testing.T) {
@@ -30,7 +32,10 @@ func TestWaitConcurrentSpacing(t *testing.T) {
 
 	outcomes := collectSorted(chans...)
 
-	assertAllNil(t, outcomes)
+	for i, o := range outcomes {
+		require.NoError(t, o.err, "outcome %d", i)
+	}
+
 	assertSpacing(t, outcomes, interval)
 }
 
@@ -78,10 +83,10 @@ func TestWaitCancelShiftsLaterWaiter(t *testing.T) {
 	thirdOutcome := <-third
 	fourthOutcome := <-fourth
 
-	assertNoError(t, firstOutcome.err)
-	assertNoError(t, secondOutcome.err)
-	assertErrorIs(t, thirdOutcome.err, context.Canceled)
-	assertNoError(t, fourthOutcome.err)
+	require.NoError(t, firstOutcome.err)
+	require.NoError(t, secondOutcome.err)
+	require.ErrorIs(t, thirdOutcome.err, context.Canceled)
+	require.NoError(t, fourthOutcome.err)
 
 	gap := fourthOutcome.at.Sub(secondOutcome.at)
 	assertGapNear(t, gap, interval, eventTolerance)

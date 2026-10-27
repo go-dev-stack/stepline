@@ -1,9 +1,11 @@
-package e2e_test
+package tests_test
 
 import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestTwoLimitersShareQueue(t *testing.T) {
@@ -51,7 +53,10 @@ func TestTwoLimitersShareQueue(t *testing.T) {
 
 		outcomes := collectSorted(firstA, firstB, secondA, secondB)
 
-		assertAllNil(t, outcomes)
+		for i, o := range outcomes {
+			require.NoError(t, o.err, "outcome %d", i)
+		}
+
 		assertSpacing(t, outcomes, interval)
 	})
 
@@ -94,9 +99,9 @@ func TestTwoLimitersShareQueue(t *testing.T) {
 		cancelledOutcome := <-cancelled
 		laterOutcome := <-later
 
-		assertNoError(t, anchorOutcome.err)
-		assertErrorIs(t, cancelledOutcome.err, context.Canceled)
-		assertNoError(t, laterOutcome.err)
+		require.NoError(t, anchorOutcome.err)
+		require.ErrorIs(t, cancelledOutcome.err, context.Canceled)
+		require.NoError(t, laterOutcome.err)
 
 		gap := laterOutcome.at.Sub(anchorOutcome.at)
 		assertGapNear(t, gap, interval, eventTolerance)

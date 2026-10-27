@@ -1,12 +1,13 @@
 package redisstore_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-dev-stack/stepline"
 	"github.com/go-dev-stack/stepline/store/redisstore"
@@ -15,68 +16,35 @@ import (
 func TestRealScriptsEndToEnd(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	client := newMiniredisClient(t)
 
 	store, err := redisstore.NewStore(ctx, client, "store-test", 1, stepline.PerSecond)
-	if err != nil {
-		t.Fatalf("NewStore failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	first, err := store.Enqueue(ctx, 5*time.Second)
-	if err != nil {
-		t.Fatalf("first Enqueue failed: %v", err)
-	}
+	require.NoError(t, err)
 
-	if first.Ticket != 1 {
-		t.Fatalf("expected first ticket to be 1, got %d", first.Ticket)
-	}
-
-	if first.Wait != 0 {
-		t.Fatalf("expected first wait to be 0, got %v", first.Wait)
-	}
-
-	if first.Version != 0 {
-		t.Fatalf("expected first version to be 0, got %d", first.Version)
-	}
+	assert.Equal(t, int64(1), first.Ticket)
+	assert.Zero(t, first.Wait)
+	assert.Zero(t, first.Version)
 
 	second, err := store.Enqueue(ctx, 5*time.Second)
-	if err != nil {
-		t.Fatalf("second Enqueue failed: %v", err)
-	}
+	require.NoError(t, err)
 
-	if second.Ticket != 2 {
-		t.Fatalf("expected second ticket to be 2, got %d", second.Ticket)
-	}
+	assert.Equal(t, int64(2), second.Ticket)
+	assert.Positive(t, second.Wait)
 
-	if second.Wait <= 0 {
-		t.Fatalf("expected second wait to be > 0, got %v", second.Wait)
-	}
-
-	if cancelErr := store.Cancel(ctx, first.Ticket, second.Ticket); cancelErr != nil {
-		t.Fatalf("Cancel failed: %v", cancelErr)
-	}
+	require.NoError(t, store.Cancel(ctx, first.Ticket, second.Ticket))
 
 	entries, err := client.XRange(ctx, "stepline:{store-test}:events", "-", "+").Result()
-	if err != nil {
-		t.Fatalf("XRANGE failed: %v", err)
-	}
-
-	if len(entries) != 1 {
-		t.Fatalf("expected exactly one stream entry, got %d", len(entries))
-	}
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
 
 	payload, ok := entries[0].Values["e"].(string)
+	require.True(t, ok, "expected string payload, got %T", entries[0].Values["e"])
 
-	if !ok {
-		t.Fatalf("expected string payload, got %T", entries[0].Values["e"])
-	}
-
-	const want = "cancelled 1 2"
-
-	if payload != want {
-		t.Fatalf("unexpected payload: got %q, want %q", payload, want)
-	}
+	assert.Equal(t, "cancelled 1 2", payload)
 }
 
 func newMiniredisClient(t *testing.T) *redis.Client {
