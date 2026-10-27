@@ -1,9 +1,11 @@
-package e2e_test
+package tests_test
 
 import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-dev-stack/stepline"
 )
@@ -21,7 +23,7 @@ func TestShutdown(t *testing.T) {
 
 		defer shutdownCancel()
 
-		assertNoError(t, limiter.Shutdown(shutdownCtx))
+		require.NoError(t, limiter.Shutdown(shutdownCtx))
 
 		waitCtx, waitCancel := context.WithTimeout(t.Context(), longDeadline)
 
@@ -31,7 +33,7 @@ func TestShutdown(t *testing.T) {
 		err := limiter.Wait(waitCtx)
 		elapsed := time.Since(start)
 
-		assertErrorIs(t, err, stepline.ErrClosed)
+		require.ErrorIs(t, err, stepline.ErrClosed)
 		assertReturnsAtOnce(t, elapsed)
 	})
 
@@ -45,7 +47,7 @@ func TestShutdown(t *testing.T) {
 
 		defer firstCancel()
 
-		assertNoError(t, limiter.Wait(firstCtx))
+		require.NoError(t, limiter.Wait(firstCtx))
 
 		secondCtx, secondCancel := context.WithTimeout(t.Context(), longDeadline)
 
@@ -62,8 +64,8 @@ func TestShutdown(t *testing.T) {
 		shutdownErr := limiter.Shutdown(shutdownCtx)
 		secondOutcome := <-second
 
-		assertErrorIs(t, shutdownErr, context.DeadlineExceeded)
-		assertErrorIs(t, secondOutcome.err, stepline.ErrClosed)
-		assertNotErrorIs(t, secondOutcome.err, context.DeadlineExceeded)
+		require.ErrorIs(t, shutdownErr, context.DeadlineExceeded)
+		require.ErrorIs(t, secondOutcome.err, stepline.ErrClosed)
+		require.NotErrorIs(t, secondOutcome.err, context.DeadlineExceeded)
 	})
 }

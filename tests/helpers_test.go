@@ -1,14 +1,15 @@
-package e2e_test
+package tests_test
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-dev-stack/stepline"
 	"github.com/go-dev-stack/stepline/store/redisstore"
@@ -62,10 +63,10 @@ func newLimiter(t *testing.T, client redis.UniversalClient, key string) (*stepli
 	defer cancel()
 
 	store, err := redisstore.NewStore(ctx, client, key, rate, period)
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	limiter, err := stepline.NewLimiter(ctx, store)
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = limiter.Shutdown(t.Context())
@@ -100,58 +101,10 @@ func collectSorted(chans ...<-chan waitOutcome) []waitOutcome {
 	return outcomes
 }
 
-func assertNoError(t *testing.T, err error) {
-	t.Helper()
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func assertErrorIs(t *testing.T, err, target error) {
-	t.Helper()
-
-	if !errors.Is(err, target) {
-		t.Fatalf("got error %v, want %v", err, target)
-	}
-}
-
-func assertNotErrorIs(t *testing.T, err, target error) {
-	t.Helper()
-
-	if errors.Is(err, target) {
-		t.Fatalf("got error %v, did not want %v", err, target)
-	}
-}
-
-func assertAllNil(t *testing.T, outcomes []waitOutcome) {
-	t.Helper()
-
-	for i, o := range outcomes {
-		if o.err != nil {
-			t.Fatalf("outcome %d: unexpected error: %v", i, o.err)
-		}
-	}
-}
-
 func assertReturnsAtOnce(t *testing.T, elapsed time.Duration) {
 	t.Helper()
 
-	if elapsed > idleUpperBound {
-		t.Fatalf("took %v, want under %v", elapsed, idleUpperBound)
-	}
-}
-
-func assertGapNear(t *testing.T, gap, want, tolerance time.Duration) {
-	t.Helper()
-
-	if gap < want-tolerance {
-		t.Fatalf("gap %v is less than %v", gap, want-tolerance)
-	}
-
-	if gap > want+generousUpperSlack {
-		t.Fatalf("gap %v is more than %v", gap, want+generousUpperSlack)
-	}
+	assert.LessOrEqual(t, elapsed, idleUpperBound)
 }
 
 func assertSpacing(t *testing.T, outcomes []waitOutcome, interval time.Duration) {
@@ -161,4 +114,11 @@ func assertSpacing(t *testing.T, outcomes []waitOutcome, interval time.Duration)
 		gap := outcomes[i].at.Sub(outcomes[i-1].at)
 		assertGapNear(t, gap, interval, timerTolerance)
 	}
+}
+
+func assertGapNear(t *testing.T, gap, want, tolerance time.Duration) {
+	t.Helper()
+
+	assert.GreaterOrEqual(t, gap, want-tolerance)
+	assert.LessOrEqual(t, gap, want+generousUpperSlack)
 }

@@ -1,9 +1,11 @@
-package e2e_test
+package tests_test
 
 import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-dev-stack/stepline"
 )
@@ -22,7 +24,7 @@ func TestWaitIdleReturnsAtOnce(t *testing.T) {
 	err := limiter.Wait(ctx)
 	elapsed := time.Since(start)
 
-	assertNoError(t, err)
+	require.NoError(t, err)
 	assertReturnsAtOnce(t, elapsed)
 }
 
@@ -36,7 +38,8 @@ func TestWaitErrDeadlineTooShort(t *testing.T) {
 
 	defer firstCancel()
 
-	assertNoError(t, limiter.Wait(firstCtx))
+	// Take the head slot.
+	require.NoError(t, limiter.Wait(firstCtx))
 
 	shortCtx, shortCancel := context.WithTimeout(t.Context(), shortDeadline)
 
@@ -46,8 +49,9 @@ func TestWaitErrDeadlineTooShort(t *testing.T) {
 	err := limiter.Wait(shortCtx)
 	elapsed := time.Since(start)
 
-	assertErrorIs(t, err, stepline.ErrDeadlineTooShort)
-	assertNotErrorIs(t, err, context.DeadlineExceeded)
+	// deadline=10ms < interval=100ms
+	require.ErrorIs(t, err, stepline.ErrDeadlineTooShort)
+	require.NotErrorIs(t, err, context.DeadlineExceeded)
 	assertReturnsAtOnce(t, elapsed)
 }
 
@@ -63,6 +67,6 @@ func TestWaitErrNoDeadline(t *testing.T) {
 	err := limiter.Wait(ctx)
 	elapsed := time.Since(start)
 
-	assertErrorIs(t, err, stepline.ErrNoDeadline)
+	require.ErrorIs(t, err, stepline.ErrNoDeadline)
 	assertReturnsAtOnce(t, elapsed)
 }
