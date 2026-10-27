@@ -18,9 +18,10 @@ The queue is one for everyone. It lives in Redis, so every pod of every
 service that shares the same provider budget waits in the same queue, in
 arrival order, and the pace holds across the whole fleet.
 
-## How cancellation works
+## How it works
 
-**1. Before the cancel.** All tickets in the queue.
+**1. Before the cancel.** Each pod calls `Wait(ctx)` to enqueue its
+tickets. Redis enqueues them sequentially, in arrival order.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/cancel-1-dark.webp">
