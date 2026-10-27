@@ -18,15 +18,29 @@ The queue is one for everyone. It lives in Redis, so every pod of every
 service that shares the same provider budget waits in the same queue, in
 arrival order, and the pace holds across the whole fleet.
 
-How it works, with Slack's chat.postMessage as the provider (about one
-message per second per channel):
+## How it works
 
-1. A goroutine sets a timeout or a deadline on its context.
-2. Before calling POST /api/chat.postMessage it calls Wait(ctx).
-3. The goroutine sleeps until its turn, as long as it takes, and never
-   gets a 429.
-4. When its context is cancelled, the goroutine leaves the queue. The
-   goroutines behind it wait less.
+**1. Before the cancel.** Each pod calls `Wait(ctx)` to enqueue its
+tickets. Redis enqueues them sequentially, in arrival order.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/cancel-1-dark.webp">
+  <img alt="Stage 1: one queue in Redis, tickets T+1 to T+8 spread over pods A, B and C" src=".github/assets/cancel-1-light.webp">
+</picture>
+
+**2. A goroutine in pod B is cancelled.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/cancel-2-dark.webp">
+  <img alt="Stage 2: pod B cancels T+5, Redis publishes the event to every pod" src=".github/assets/cancel-2-light.webp">
+</picture>
+
+**3. Each pod shifts.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/cancel-3-dark.webp">
+  <img alt="Stage 3: in every pod the tickets after T+5 move one slot earlier" src=".github/assets/cancel-3-light.webp">
+</picture>
 
 ## Contents
 
