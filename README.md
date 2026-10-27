@@ -1,4 +1,7 @@
-# Stepline
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.png">
+  <img alt="Stepline - Most rate limiters protect a system from its users. This one is the other way around." src=".github/assets/banner-light.png">
+</picture>
 
 Simple, distributed, reverse rate limiter in Go.
 
