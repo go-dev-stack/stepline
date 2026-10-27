@@ -18,7 +18,7 @@ The queue is one for everyone. It lives in Redis, so every pod of every
 service that shares the same provider budget waits in the same queue, in
 arrival order, and the pace holds across the whole fleet.
 
-A cancel, with three pods sharing one queue.
+## How cancellation works
 
 **1. Before the cancel.** All tickets in the queue.
 
